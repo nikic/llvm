@@ -57,14 +57,11 @@ void InstructionPrecedenceTracking::fill(const BasicBlock *BB) {
 }
 
 void InstructionPrecedenceTracking::invalidateBlock(const BasicBlock *BB) {
-  OI.invalidateBlock(BB);
   FirstImplicitControlFlowInsts.erase(BB);
   KnownBlocks.erase(BB);
 }
 
 void InstructionPrecedenceTracking::clear() {
-  for (auto It : FirstImplicitControlFlowInsts)
-    OI.invalidateBlock(It.first);
   FirstImplicitControlFlowInsts.clear();
   KnownBlocks.clear();
 }

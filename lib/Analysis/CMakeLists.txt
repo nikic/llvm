@@ -63,7 +63,6 @@ add_llvm_library(LLVMAnalysis
   ObjCARCAnalysisUtils.cpp
   ObjCARCInstKind.cpp
   OptimizationRemarkEmitter.cpp
-  OrderedBasicBlock.cpp
   PHITransAddr.cpp
   PhiValues.cpp
   PostDominators.cpp

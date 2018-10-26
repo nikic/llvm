@@ -1072,8 +1072,7 @@ static bool eliminateDeadStores(BasicBlock &BB, AliasAnalysis *AA,
   const DataLayout &DL = BB.getModule()->getDataLayout();
   bool MadeChange = false;
 
-  // FIXME: Maybe change this to use some abstraction like OrderedBasicBlock?
-  // The current OrderedBasicBlock can't deal with mutation at the moment.
+  // FIXME: Don't maintain our own ordering. Use Instruction::comesBefore.
   size_t LastThrowingInstIndex = 0;
   DenseMap<Instruction*, size_t> InstrOrdering;
   size_t InstrIndex = 1;

@@ -24,7 +24,6 @@
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/MemoryBuiltins.h"
 #include "llvm/Analysis/MemoryLocation.h"
-#include "llvm/Analysis/OrderedBasicBlock.h"
 #include "llvm/Analysis/PHITransAddr.h"
 #include "llvm/Analysis/PhiValues.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
@@ -489,12 +488,6 @@ MemDepResult MemoryDependenceResults::getSimplePointerDependencyFrom(
 
   const DataLayout &DL = BB->getModule()->getDataLayout();
 
-  // Create a numbered basic block to lazily compute and cache instruction
-  // positions inside a BB. This is used to provide fast queries for relative
-  // position between two instructions in a BB and can be used by
-  // AliasAnalysis::callCapturesBefore.
-  OrderedBasicBlock OBB(BB);
-
   // Return "true" if and only if the instruction I is either a non-simple
   // load or a non-simple store.
   auto isNonSimpleLoadOrStore = [](Instruction *I) -> bool {
@@ -684,7 +677,7 @@ MemDepResult MemoryDependenceResults::getSimplePointerDependencyFrom(
     ModRefInfo MR = AA.getModRefInfo(Inst, MemLoc);
     // If necessary, perform additional analysis.
     if (isModAndRefSet(MR))
-      MR = AA.callCapturesBefore(Inst, MemLoc, &DT, &OBB);
+      MR = AA.callCapturesBefore(Inst, MemLoc, &DT);
     switch (clearMust(MR)) {
     case ModRefInfo::NoModRef:
       // If the call has no effect on the queried pointer, just ignore it.

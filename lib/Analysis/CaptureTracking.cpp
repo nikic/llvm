@@ -21,7 +21,6 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/CFG.h"
-#include "llvm/Analysis/OrderedBasicBlock.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/IR/Constants.h"
@@ -62,8 +61,8 @@ namespace {
   struct CapturesBefore : public CaptureTracker {
 
     CapturesBefore(bool ReturnCaptures, const Instruction *I, const DominatorTree *DT,
-                   bool IncludeI, OrderedBasicBlock *IC)
-      : OrderedBB(IC), BeforeHere(I), DT(DT),
+                   bool IncludeI)
+      : BeforeHere(I), DT(DT),
         ReturnCaptures(ReturnCaptures), IncludeI(IncludeI), Captured(false) {}
 
     void tooManyUses() override { Captured = true; }
@@ -76,9 +75,7 @@ namespace {
         return true;
 
       // Compute the case where both instructions are inside the same basic
-      // block. Since instructions in the same BB as BeforeHere are numbered in
-      // 'OrderedBB', avoid using 'dominates' and 'isPotentiallyReachable'
-      // which are very expensive for large basic blocks.
+      // block.
       if (BB == BeforeHere->getParent()) {
         // 'I' dominates 'BeforeHere' => not safe to prune.
         //
@@ -88,7 +85,7 @@ namespace {
         // UseBB == BB, avoid pruning.
         if (isa<InvokeInst>(BeforeHere) || isa<PHINode>(I) || I == BeforeHere)
           return false;
-        if (!OrderedBB->dominates(BeforeHere, I))
+        if (!BeforeHere->comesBefore(I))
           return false;
 
         // 'BeforeHere' comes before 'I', it's safe to prune if we also
@@ -139,7 +136,6 @@ namespace {
       return true;
     }
 
-    OrderedBasicBlock *OrderedBB;
     const Instruction *BeforeHere;
     const DominatorTree *DT;
 
@@ -181,29 +177,21 @@ bool llvm::PointerMayBeCaptured(const Value *V,
 /// returning the value (or part of it) from the function counts as capturing
 /// it or not.  The boolean StoreCaptures specified whether storing the value
 /// (or part of it) into memory anywhere automatically counts as capturing it
-/// or not. A ordered basic block \p OBB can be used in order to speed up
-/// queries about relative order among instructions in the same basic block.
+/// or not.
 bool llvm::PointerMayBeCapturedBefore(const Value *V, bool ReturnCaptures,
                                       bool StoreCaptures, const Instruction *I,
-                                      const DominatorTree *DT, bool IncludeI,
-                                      OrderedBasicBlock *OBB) {
+                                      const DominatorTree *DT, bool IncludeI) {
   assert(!isa<GlobalValue>(V) &&
          "It doesn't make sense to ask whether a global is captured.");
-  bool UseNewOBB = OBB == nullptr;
 
   if (!DT)
     return PointerMayBeCaptured(V, ReturnCaptures, StoreCaptures);
-  if (UseNewOBB)
-    OBB = new OrderedBasicBlock(I->getParent());
 
   // TODO: See comment in PointerMayBeCaptured regarding what could be done
   // with StoreCaptures.
 
-  CapturesBefore CB(ReturnCaptures, I, DT, IncludeI, OBB);
+  CapturesBefore CB(ReturnCaptures, I, DT, IncludeI);
   PointerMayBeCaptured(V, &CB);
-
-  if (UseNewOBB)
-    delete OBB;
   return CB.Captured;
 }
 
